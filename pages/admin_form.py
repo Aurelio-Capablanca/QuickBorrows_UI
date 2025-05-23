@@ -10,9 +10,8 @@ base_url = "http://127.0.0.1:8001/api/"
 
 def admin_form(page: ft.Page):
     token = page.client_storage.get("access_token")
-
     nav_rail = get_nav_rail(page.route)
-    # --- Form Fields ---
+
     name_field = ft.TextField(label="First Name", width=300)
     lastname_field = ft.TextField(label="Last Name", width=300)
     email_field = ft.TextField(label="Email", width=300)
@@ -22,42 +21,55 @@ def admin_form(page: ft.Page):
     result_text = ft.Text()
 
     def submit_admin(_):
-        payload = {
-            "adminname": name_field.value,
-            "adminlastname": lastname_field.value,
-            "adminemail": email_field.value,
-            "adminpass": password_field.value,
-            "adminphone": phone_field.value,
-            "adminstatus": status_switch.value,
-        }
+        admin_id = page.client_storage.get("edit_admin_id")
+        print("Admin id: ", admin_id)
+        if admin_id is not None:
+            payload = {
+                "idadministrator": admin_id,
+                "adminname": name_field.value,
+                "adminlastname": lastname_field.value,
+                "adminemail": email_field.value,
+                "adminpass": password_field.value,
+                "adminphone": phone_field.value,
+                "adminstatus": status_switch.value,
+            }
+        else:
+            payload = {
+                "adminname": name_field.value,
+                "adminlastname": lastname_field.value,
+                "adminemail": email_field.value,
+                "adminpass": password_field.value,
+                "adminphone": phone_field.value,
+                "adminstatus": status_switch.value,
+            }
+        print("send payload: ", payload)
         try:
             response = requests.post(
-                concat(base_url, "/admins/create"),
+                f"{base_url}admins/create",
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                 data=json.dumps(payload)
             )
             if response.status_code in (200, 201):
-                result_text.value = "✅ Administrator created!"
+                result_text.value = "Administrator created!"
                 name_field.value = lastname_field.value = email_field.value = password_field.value = phone_field.value = ""
                 status_switch.value = True
             else:
-                result_text.value = f"❌ Error: {response.status_code}"
+                result_text.value = f"Error: {response.status_code}"
         except Exception as e:
-            result_text.value = f"❌ Exception: {e}"
+            result_text.value = f"Exception: {e}"
         page.update()
 
-    def populate_admin_fields(admin):
-        name_field.value = admin.get("adminname", "")
-        lastname_field.value = admin.get("adminlastname", "")
-        email_field.value = admin.get("adminemail", "")
-        phone_field.value = admin.get("adminphone", "")
-        status_switch.value = admin.get("adminstatus", False)
-        # store admin id in hidden form-level variable
-        page.client_storage.set("edit_admin_id", str(admin.get("adminid", "")))
+    def populate_admin_fields(admin_array):
+        name_field.value = admin_array.get("adminname", "")
+        lastname_field.value = admin_array.get("adminlastname", "")
+        email_field.value = admin_array.get("adminemail", "")
+        phone_field.value = admin_array.get("adminphone", "")
+        status_switch.value = admin_array.get("adminstatus", False)
+        page.client_storage.set("edit_admin_id", str(admin_array.get("idadministrator", "")))
         page.update()
 
     def get_all_users():
-        url = "http://127.0.0.1:8001/api/admins/get-all"
+        url = f"{base_url}admins/get-all"
         try:
             result = requests.get(url, headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                                   json={"page": 0, "limit": 10})
@@ -70,17 +82,18 @@ def admin_form(page: ft.Page):
 
     def delete_admin(admin_id):
         try:
-            response = requests.delete(
-                f"{base_url}admins/delete/{admin_id}",
-                headers={"Authorization": f"Bearer {token}"}
+            response = requests.post(
+                f"{base_url}admins/delete",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"identity": admin_id}
             )
-            if response.status_code == 204:
-                result_text.value = "🗑️ Administrator deleted."
+            if response.status_code == 200:
+                result_text.value = "Administrator deleted."
                 page.go(page.route)  # simple way to refresh the page
             else:
-                result_text.value = f"❌ Delete failed: {response.status_code}"
+                result_text.value = f"Delete failed: {response.status_code}"
         except Exception as e:
-            result_text.value = f"❌ Exception: {e}"
+            result_text.value = f" Exception: {e}"
         page.update()
 
     admins = get_all_users()
@@ -96,9 +109,9 @@ def admin_form(page: ft.Page):
                 ft.DataCell(ft.Text(admin.get("datecreated", ""))),
                 ft.DataCell(
                     ft.Row([
-                        ft.IconButton(content=ft.Text("Update"), tooltip="Edit",#icon=ft.icons.EDIT,
+                        ft.IconButton(content=ft.Text("Update"), tooltip="Edit",  # icon=ft.icons.EDIT,
                                       on_click=lambda e, a=admin: populate_admin_fields(a)),
-                        ft.IconButton(content=ft.Text("Delete"), tooltip="Delete",#icon=ft.icons.DELETE,
+                        ft.IconButton(content=ft.Text("Delete"), tooltip="Delete",  # icon=ft.icons.DELETE,
                                       on_click=lambda e, aid=admin.get("idadministrator"): delete_admin(aid))
                     ])
                 )
@@ -116,10 +129,13 @@ def admin_form(page: ft.Page):
         ],
         rows=admin_rows
     )
-
-    return ft.Container(
+    return ft.Row([
+    nav_rail,
+    ft.VerticalDivider(width=1),
+    ft.Container(
+        expand=True,
+        padding=20,
         content=ft.Column([
-            # nav_rail,
             ft.Text("Manage Administrators", size=20, weight=ft.FontWeight.BOLD),
             name_field,
             lastname_field,
@@ -131,7 +147,34 @@ def admin_form(page: ft.Page):
             result_text,
             ft.Divider(),
             admin_table
-        ], spacing=10),
-        padding=20,
-        expand=True
+        ], spacing=10, scroll="auto")  # <-- enables vertical scroll
     )
+], expand=True)
+
+    # return ft.Row([
+    #     nav_rail,
+    #     ft.VerticalDivider(width=1),
+    #     ft.Container(
+    #         content=ft.Column([
+    #             ft.Text("Manage Administrators", size=20, weight=ft.FontWeight.BOLD),
+    #             name_field,
+    #             lastname_field,
+    #             email_field,
+    #             password_field,
+    #             phone_field,
+    #             status_switch,
+    #             ft.ElevatedButton("Submit", on_click=submit_admin),
+    #             result_text
+    #         ], spacing=10),
+    #         expand=True,
+    #         padding=20
+    #     ),
+    #     ft.VerticalDivider(width=1),
+    #     ft.Container(
+    #         content=admin_table,
+    #         expand=True,
+    #         padding=20,
+    #         height=400,
+    #     )
+    # ], expand=True)
+

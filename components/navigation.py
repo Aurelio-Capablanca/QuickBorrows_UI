@@ -16,7 +16,7 @@ def get_nav_rail(current_route: str, on_change=None) -> ft.NavigationRail:
         selected_index = 0
 
     return ft.NavigationRail(
-        destinations=[ft.NavigationRailDestination(label=ft.Text(label)) for _, label in NAV_ROUTES],
+        destinations=[ft.NavigationRailDestination(label=label) for _, label in NAV_ROUTES],
         selected_index=selected_index,
         on_change=on_change or default_nav_change,
         label_type=ft.NavigationRailLabelType.ALL,
