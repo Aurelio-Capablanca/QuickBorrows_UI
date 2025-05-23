@@ -1,8 +1,10 @@
+import asyncio
+
 import flet as ft
 import requests
 
-def login_page(page: ft.Page):
 
+def login_page(page: ft.Page):
     username_field = ft.TextField(label="Username", width=300)
     password_field = ft.TextField(label="Password", password=True, can_reveal_password=True, width=300)
 
@@ -13,13 +15,24 @@ def login_page(page: ft.Page):
         try:
             response = requests.post(url, json={"username": username, "password": password})
             if response.status_code == 200:
-                token = response.json()["access_token"]
-                print(token)
-                page.snack_bar = ft.SnackBar(ft.Text("Login Successful!"), bgcolor="green")
-                page.snack_bar.open = True
+                page.client_storage.set("access_token", response.json()["access_token"])
+                print(page.client_storage.get("access_token"))
+
+                # Optionally store token: page.session.set("token", token)
+                page.dialog = ft.AlertDialog(
+                    title=ft.Text("Welcome"),
+                    content=ft.Text("Login successful! Redirecting..."),
+                    on_dismiss=lambda _: page.go("/dashboard")
+                )
+                page.dialog.open = True
                 page.update()
+
+                page.dialog.open = False
+                page.update()
+                page.go("/dashboard")
             else:
                 print("Error")
+                print(response.json()["detail"])
                 page.snack_bar = ft.SnackBar(ft.Text("Login Failed!"), bgcolor="red")
                 page.snack_bar.open = True
                 page.update()

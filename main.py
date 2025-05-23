@@ -1,19 +1,48 @@
 import flet as ft
+
+from pages.admin_form import admin_form
+from pages.dashboard import dashboard_page
 from pages.login import login_page
 
+
 def main(page: ft.Page):
-    page.title = "QuickBorrows - Login"
-    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
-    page.padding = 50
-    page.theme_mode = ft.ThemeMode.LIGHT
+    def route_change(e):
+        page.views.clear()
+        route = page.route
+        ##page.client_storage.remove("access_token")
+        jwt_token = page.client_storage.get("access_token")
+        if route == "/":
+            page.views.append(
+                ft.View("/", [login_page(page)])
+            )
+            page.title = "QuickBorrows - Login"
+            page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+            page.vertical_alignment = ft.MainAxisAlignment.CENTER
+            page.padding = 50
+            page.theme_mode = ft.ThemeMode.LIGHT
 
-    page.add(login_page(page))
-    page.update()
+        elif route == "/dashboard":
+            print("are you there ? ",jwt_token)
+            if not jwt_token:
+                page.go("/")
+                return
+            page.views.append(
+                ft.View("/dashboard", [dashboard_page(page)])
+            )
+            page.title = "QuickBorrows - Dashboard"
+        elif route == "/admin":
+            if not jwt_token:
+                page.go("/")
+                return
+            page.views.append(
+                ft.View("/admin", [admin_form(page)])
+            )
+            page.title = "QuickBorrows - Dashboard"
+        page.update()
 
-#ft.app(target=main, view=ft.WEB_BROWSER, port=5173)
+    page.on_route_change = route_change
+    page.go(page.route)
 
-# ft.app(target=main)
-#
+
 if __name__ == "__main__":
     ft.app(target=main, view=ft.WEB_BROWSER, port=5173)
