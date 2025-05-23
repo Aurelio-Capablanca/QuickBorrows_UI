@@ -4,7 +4,7 @@ import flet as ft
 NAV_ROUTES = [
     ("/dashboard", "Home"),
     ("/admin", "Administrators"),
-    ("/clients", "Clients"),
+    ("/client", "Clients"),
     ("/borrow", "Borrow"),
     ("/funds", "Funds"),
 ]

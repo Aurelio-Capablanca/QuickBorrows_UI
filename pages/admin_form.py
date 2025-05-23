@@ -1,9 +1,6 @@
-from operator import concat
-
 import flet as ft
-import json
-import requests
 from components.navigation import get_nav_rail
+from misc_functions.misc_api_calls import get_all_api, delete_entity, save_entities
 
 base_url = "http://127.0.0.1:8001/api/"
 
@@ -42,21 +39,17 @@ def admin_form(page: ft.Page):
                 "adminphone": phone_field.value,
                 "adminstatus": status_switch.value,
             }
-        print("send payload: ", payload)
         try:
-            response = requests.post(
-                f"{base_url}admins/create",
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-                data=json.dumps(payload)
-            )
+            response = save_entities(f"{base_url}admins/create", token, payload)
             if response.status_code in (200, 201):
-                result_text.value = "Administrator created!"
+                result_text.value = "Administrator saved!"
                 name_field.value = lastname_field.value = email_field.value = password_field.value = phone_field.value = ""
                 status_switch.value = True
             else:
                 result_text.value = f"Error: {response.status_code}"
         except Exception as e:
             result_text.value = f"Exception: {e}"
+        page.client_storage.remove("edit_admin_id")
         page.update()
 
     def populate_admin_fields(admin_array):
@@ -68,35 +61,7 @@ def admin_form(page: ft.Page):
         page.client_storage.set("edit_admin_id", str(admin_array.get("idadministrator", "")))
         page.update()
 
-    def get_all_users():
-        url = f"{base_url}admins/get-all"
-        try:
-            result = requests.get(url, headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-                                  json={"page": 0, "limit": 10})
-            print(result)
-            print(result.json()["detail"]["data"])
-            return result.json()["detail"]["data"]
-        except Exception as ex:
-            print(ex)
-            return None
-
-    def delete_admin(admin_id):
-        try:
-            response = requests.post(
-                f"{base_url}admins/delete",
-                headers={"Authorization": f"Bearer {token}"},
-                json={"identity": admin_id}
-            )
-            if response.status_code == 200:
-                result_text.value = "Administrator deleted."
-                page.go(page.route)  # simple way to refresh the page
-            else:
-                result_text.value = f"Delete failed: {response.status_code}"
-        except Exception as e:
-            result_text.value = f" Exception: {e}"
-        page.update()
-
-    admins = get_all_users()
+    admins = get_all_api(f"{base_url}admins/get-all", token)
     admin_rows = []
 
     for admin in admins:
@@ -112,7 +77,8 @@ def admin_form(page: ft.Page):
                         ft.IconButton(content=ft.Text("Update"), tooltip="Edit",  # icon=ft.icons.EDIT,
                                       on_click=lambda e, a=admin: populate_admin_fields(a)),
                         ft.IconButton(content=ft.Text("Delete"), tooltip="Delete",  # icon=ft.icons.DELETE,
-                                      on_click=lambda e, aid=admin.get("idadministrator"): delete_admin(aid))
+                                      on_click=lambda e, aid=admin.get("idadministrator"): delete_entity(
+                                          f"{base_url}admins/delete", token, aid, result_text, page, "Administrator"))
                     ])
                 )
             ])
@@ -130,51 +96,23 @@ def admin_form(page: ft.Page):
         rows=admin_rows
     )
     return ft.Row([
-    nav_rail,
-    ft.VerticalDivider(width=1),
-    ft.Container(
-        expand=True,
-        padding=20,
-        content=ft.Column([
-            ft.Text("Manage Administrators", size=20, weight=ft.FontWeight.BOLD),
-            name_field,
-            lastname_field,
-            email_field,
-            password_field,
-            phone_field,
-            status_switch,
-            ft.ElevatedButton("Submit", on_click=submit_admin),
-            result_text,
-            ft.Divider(),
-            admin_table
-        ], spacing=10, scroll="auto")  # <-- enables vertical scroll
-    )
-], expand=True)
-
-    # return ft.Row([
-    #     nav_rail,
-    #     ft.VerticalDivider(width=1),
-    #     ft.Container(
-    #         content=ft.Column([
-    #             ft.Text("Manage Administrators", size=20, weight=ft.FontWeight.BOLD),
-    #             name_field,
-    #             lastname_field,
-    #             email_field,
-    #             password_field,
-    #             phone_field,
-    #             status_switch,
-    #             ft.ElevatedButton("Submit", on_click=submit_admin),
-    #             result_text
-    #         ], spacing=10),
-    #         expand=True,
-    #         padding=20
-    #     ),
-    #     ft.VerticalDivider(width=1),
-    #     ft.Container(
-    #         content=admin_table,
-    #         expand=True,
-    #         padding=20,
-    #         height=400,
-    #     )
-    # ], expand=True)
-
+        nav_rail,
+        ft.VerticalDivider(width=1),
+        ft.Container(
+            expand=True,
+            padding=20,
+            content=ft.Column([
+                ft.Text("Manage Administrators", size=20, weight=ft.FontWeight.BOLD),
+                name_field,
+                lastname_field,
+                email_field,
+                password_field,
+                phone_field,
+                status_switch,
+                ft.ElevatedButton("Submit", on_click=submit_admin),
+                result_text,
+                ft.Divider(),
+                admin_table
+            ], spacing=10, scroll="auto")
+        )
+    ], expand=True)
