@@ -95,9 +95,6 @@ def borrow_form(page: ft.Page):
                     ft.Row([
                         ft.IconButton(content=ft.Text("Update"), tooltip="Edit",  # icon=ft.icons.EDIT,
                                       on_click=lambda e, a=borrow: populate_borrow_fields(a)),
-                        # ft.IconButton(content=ft.Text("Delete"), tooltip="Delete",  # icon=ft.icons.DELETE,
-                        #               on_click=lambda e, aid=admin.get("idadministrator"): delete_entity(
-                        #                   f"{base_url}admins/delete", token, aid, result_text, page, "Administrator"))
                     ])
                 )
             ])
