@@ -7,19 +7,17 @@ from misc_functions.misc_api_calls import get_all_api, generate_dropdown, save_e
 base_url = "http://127.0.0.1:8001/api/"
 
 
-def borrow_form(page : ft.Page):
+def borrow_form(page: ft.Page):
+    page.client_storage.set("edit_borrow_id", 0)
     token = page.client_storage.get("access_token")
     nav_rail = get_nav_rail(page.route)
 
     payment_type = get_all_api(f"{base_url}get-payment-methods", token)
-    clients_all = get_all_api(f"{base_url}clients/get-all",token)
-    print(payment_type," ",clients_all)
-    # --- Borrow Info ---
+    clients_all = get_all_api(f"{base_url}clients/get-all", token)
+    print(payment_type, " ", clients_all)
+    # ---- Borrows fields -----
     borrow_amount = ft.TextField(label="Borrow Amount", keyboard_type="number", width=200)
-    #date_taken = ft.TextField(label="Date Taken (YYYY-MM-DD, optional)", width=200)
     date_taken, value_date_taken = create_date_picker(page)
-
-
     payment_type_form = generate_dropdown(payment_type, "Payment Type", "idmethod", "paymentmethod")
     id_client_form = generate_dropdown(clients_all, "Client", "idclient", "clientname")
     is_active = ft.Checkbox(label="Is Active", value=True)
@@ -29,17 +27,28 @@ def borrow_form(page : ft.Page):
     generate_to_fill = ft.Checkbox(label="Generate Extra Payments to Fill", value=False)
     result_text = ft.Text()
 
-
     def submit_borrow(_):
-        print("Selected date: ",value_date_taken())
-        borrow_data = {
-            "borrowamount": float(borrow_amount.value),
-            "datetaken": value_date_taken(),
-            "idmethod": int(payment_type_form.value),
-            "idclient": int(id_client_form.value),
-            "idfound":1,
-            "isactive": is_active.value,
-        }
+        borrow_id = page.client_storage.get("edit_borrow_id")
+        print("Selected date: ", value_date_taken())
+        if borrow_id != 0:
+            borrow_data = {
+                "idborrow": borrow_id,
+                "borrowamount": float(borrow_amount.value),
+                "datetaken": value_date_taken(),
+                "idmethod": int(payment_type_form.value),
+                "idclient": int(id_client_form.value),
+                "idfound": 1,
+                "isactive": is_active.value,
+            }
+        else:
+            borrow_data = {
+                "borrowamount": float(borrow_amount.value),
+                "datetaken": value_date_taken(),
+                "idmethod": int(payment_type_form.value),
+                "idclient": int(id_client_form.value),
+                "idfound": 1,
+                "isactive": is_active.value,
+            }
         bill_data = {
             "numpayments": [int(x) for x in num_payments.value.split(",") if x.strip()],
             "paymentsof": [float(x) for x in payments_of.value.split(",") if x.strip()],
@@ -54,7 +63,7 @@ def borrow_form(page : ft.Page):
             print("Admin Response", response.json()["detail"])
             if response.status_code in (200, 201):
                 result_text.value = "Borrow saved!"
-                borrow_amount.value = num_payments.value = payments_of.value =  ""
+                borrow_amount.value = num_payments.value = payments_of.value = ""
                 generate_to_fill.value = True
             else:
                 result_text.value = f"Error: {response.status_code}"
@@ -62,6 +71,37 @@ def borrow_form(page : ft.Page):
             result_text.value = f"Exception: {e}"
         page.client_storage.set("edit_admin_id", 0)
         page.update()
+
+    def populate_borrow_fields(borrow_array):
+        print("void")
+        borrow_amount.value = borrow_array.get("borrowamount", "")
+        payment_type_form.value = borrow_array.get("idmethod", "")
+        id_client_form.value = borrow_array.get("idclient", "")
+        is_active.value = borrow_array.get("isactive", "")
+        page.client_storage.set("edit_borrow_id", borrow_array.get("idborrow", 0))
+        page.update()
+
+    borrows = get_all_api(f"{base_url}borrows/get-all", token)
+    borrow_rows = []
+    for borrow in borrows:
+        borrow_rows.append(
+            ft.DataRow(cells=[
+                ft.DataCell(ft.Text(borrow.get("borrowamount", ""))),
+                ft.DataCell(ft.Text(borrow.get("totalpayment", ""))),
+                ft.DataCell(ft.Text(borrow.get("datetaken", ""))),
+                ft.DataCell(ft.Text(borrow.get("duedate", ""))),
+                ft.DataCell(ft.Text(borrow.get("percentagetax", ""))),
+                ft.DataCell(
+                    ft.Row([
+                        ft.IconButton(content=ft.Text("Update"), tooltip="Edit",  # icon=ft.icons.EDIT,
+                                      on_click=lambda e, a=borrow: populate_borrow_fields(a)),
+                        # ft.IconButton(content=ft.Text("Delete"), tooltip="Delete",  # icon=ft.icons.DELETE,
+                        #               on_click=lambda e, aid=admin.get("idadministrator"): delete_entity(
+                        #                   f"{base_url}admins/delete", token, aid, result_text, page, "Administrator"))
+                    ])
+                )
+            ])
+        )
 
     borrows_table = ft.DataTable(
         columns=[
@@ -72,7 +112,7 @@ def borrow_form(page : ft.Page):
             ft.DataColumn(label=ft.Text("Percentage Tax")),
             ft.DataColumn(label=ft.Text("Actions"))
         ],
-        rows=[]
+        rows=borrow_rows
     )
 
     return ft.Row([
@@ -98,5 +138,3 @@ def borrow_form(page : ft.Page):
             ], spacing=10, scroll="auto")
         )
     ], expand=True)
-
-
