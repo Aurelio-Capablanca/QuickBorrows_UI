@@ -5,8 +5,7 @@ NAV_ROUTES = [
     ("/dashboard", "Home"),
     ("/admin", "Administrators"),
     ("/client", "Clients"),
-    ("/borrow", "Borrow"),
-    ("/funds", "Funds"),
+    ("/borrow", "Borrow")
 ]
 
 def get_nav_rail(current_route: str, on_change=None) -> ft.NavigationRail:

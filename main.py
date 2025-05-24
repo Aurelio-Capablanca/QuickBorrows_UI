@@ -1,6 +1,7 @@
 import flet as ft
 
 from pages.admin_form import admin_form
+from pages.borrow_form import borrow_form
 from pages.client_form import client_form
 from pages.dashboard import dashboard_page
 from pages.login import login_page
@@ -46,7 +47,15 @@ def main(page: ft.Page):
             page.views.append(
                 ft.View("/admin", [client_form(page)])
             )
-            page.title = "QuickBorrows - Administrators"
+            page.title = "QuickBorrows - Clients"
+        elif route == "/borrow":
+            if not jwt_token:
+                page.go("/")
+                return
+            page.views.append(
+                ft.View("/admin", [borrow_form(page)])
+            )
+            page.title = "QuickBorrows - Borrows"
         page.update()
 
     page.on_route_change = route_change

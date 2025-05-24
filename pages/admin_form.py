@@ -6,6 +6,7 @@ base_url = "http://127.0.0.1:8001/api/"
 
 
 def admin_form(page: ft.Page):
+    page.client_storage.set("edit_admin_id", 0)
     token = page.client_storage.get("access_token")
     nav_rail = get_nav_rail(page.route)
 
@@ -20,7 +21,7 @@ def admin_form(page: ft.Page):
     def submit_admin(_):
         admin_id = page.client_storage.get("edit_admin_id")
         print("Admin id: ", admin_id)
-        if admin_id is not None:
+        if admin_id != 0:
             payload = {
                 "idadministrator": admin_id,
                 "adminname": name_field.value,
@@ -41,6 +42,7 @@ def admin_form(page: ft.Page):
             }
         try:
             response = save_entities(f"{base_url}admins/create", token, payload)
+            print("Admin Response", response.json()["detail"])
             if response.status_code in (200, 201):
                 result_text.value = "Administrator saved!"
                 name_field.value = lastname_field.value = email_field.value = password_field.value = phone_field.value = ""
@@ -49,7 +51,7 @@ def admin_form(page: ft.Page):
                 result_text.value = f"Error: {response.status_code}"
         except Exception as e:
             result_text.value = f"Exception: {e}"
-        page.client_storage.remove("edit_admin_id")
+        page.client_storage.set("edit_admin_id", 0)
         page.update()
 
     def populate_admin_fields(admin_array):
@@ -58,7 +60,7 @@ def admin_form(page: ft.Page):
         email_field.value = admin_array.get("adminemail", "")
         phone_field.value = admin_array.get("adminphone", "")
         status_switch.value = admin_array.get("adminstatus", False)
-        page.client_storage.set("edit_admin_id", str(admin_array.get("idadministrator", "")))
+        page.client_storage.set("edit_admin_id", str(admin_array.get("idadministrator", 0)))
         page.update()
 
     admins = get_all_api(f"{base_url}admins/get-all", token)
